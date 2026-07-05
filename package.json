@@ -1,0 +1,37 @@
+{
+  "name": "mcp-gcp-tasks-example",
+  "version": "0.1.0",
+  "description": "Learning example: MCP server with Google (GCP) bearer-token auth, Streamable HTTP transport, long-running Tasks, and MCP Apps",
+  "type": "module",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/espechtsoftware/TasksExample.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build:ui && tsc",
+    "build:ui": "node scripts/build-ui.mjs",
+    "dev": "npm run build:ui && tsx src/index.ts",
+    "start": "node dist/src/index.js",
+    "typecheck": "tsc --noEmit",
+    "smoke": "npm run build:ui && tsx scripts/smoke.ts"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.2.1",
+    "jose": "^6.2.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3"
+  }
+}

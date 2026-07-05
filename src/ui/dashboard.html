@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  Template for the report-dashboard MCP App view.
+
+  scripts/build-ui.mjs bundles src/ui/dashboard.ts (including the
+  @modelcontextprotocol/ext-apps App class) and inlines it where the
+  APP_SCRIPT placeholder sits, producing dist/ui/dashboard.html. The server
+  ships that single file as the ui:// resource — hosts render it in a
+  sandboxed iframe, so everything must be inline; no external scripts.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Report dashboard</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f7f9;
+        --card: #ffffff;
+        --text: #1a1d21;
+        --muted: #667085;
+        --bar-bg: #e4e7ec;
+        --bar-fill: #4353ff;
+        --ok: #12805c;
+        --bad: #b42318;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #101318;
+          --card: #1a1f27;
+          --text: #edeff3;
+          --muted: #98a2b3;
+          --bar-bg: #2b3340;
+          --bar-fill: #7c8cff;
+          --ok: #3ccb96;
+          --bad: #f97066;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      h1 { font-size: 16px; margin: 0 0 4px; }
+      .sub { color: var(--muted); margin: 0 0 16px; font-size: 12px; }
+      .card {
+        background: var(--card);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+      }
+      .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+      .topic { font-weight: 600; }
+      .status { font-size: 12px; color: var(--muted); }
+      .status.completed { color: var(--ok); }
+      .status.failed, .status.cancelled { color: var(--bad); }
+      .bar { height: 6px; border-radius: 3px; background: var(--bar-bg); margin-top: 8px; overflow: hidden; }
+      .bar > div { height: 100%; border-radius: 3px; background: var(--bar-fill); transition: width 0.4s ease; }
+      .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+      .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Report generation tasks</h1>
+    <p class="sub" id="subtitle">Connecting to host…</p>
+    <div id="reports"></div>
+    <script type="module">
+      /*APP_SCRIPT*/
+    </script>
+  </body>
+</html>
