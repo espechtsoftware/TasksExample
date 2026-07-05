@@ -1,70 +1,102 @@
 /**
- * Iframe-side code for the report dashboard MCP App.
+ * Iframe-side code for the training-dashboard MCP App.
  *
  * Runs inside the host's sandboxed iframe. The App class speaks JSON-RPC to
  * the host over postMessage — the same base protocol as the rest of MCP —
- * which is why every action here (like the list_report_tasks polling) goes
- * through the host's normal tool-call consent/audit path.
+ * which is why every action here (like the list_training_jobs polling) goes
+ * through the host's normal tool-call consent/audit path, carrying the same
+ * bearer identity as model-initiated calls.
  */
 import { App } from '@modelcontextprotocol/ext-apps';
 
-interface ReportRecord {
-  taskId: string;
-  topic: string;
-  requestedBy: string;
-  status: 'working' | 'completed' | 'failed' | 'cancelled';
-  step: number;
-  totalSteps: number;
-  stepLabel: string;
-  startedAt: string;
-  finishedAt?: string;
+interface JobView {
+  jobId: string;
+  status: 'received' | 'analyzing' | 'training' | 'completed' | 'failed' | 'cancelled';
+  progress: string | null;
+  targetColumn: string;
+  problemType: string;
+  bestModel: string | null;
+  metrics: {
+    primary_metric?: string;
+    leaderboard?: Record<string, Record<string, number>>;
+  } | null;
+  modelResourceUri?: string | null;
 }
 
 const POLL_MS = 2000;
-const subtitle = document.getElementById('subtitle')!;
-const container = document.getElementById('reports')!;
+const RUNNING = new Set(['received', 'analyzing', 'training']);
+// Rough progress mapping for the bar; precise step counts live server-side.
+const STATUS_PCT: Record<JobView['status'], number> = {
+  received: 5,
+  analyzing: 25,
+  training: 65,
+  completed: 100,
+  failed: 100,
+  cancelled: 100
+};
 
-function render(reports: ReportRecord[]): void {
-  if (reports.length === 0) {
-    container.innerHTML = '<div class="empty">No report tasks yet — ask the model to generate a report.</div>';
-    return;
-  }
-  container.innerHTML = reports
-    .map(r => {
-      const pct = r.status === 'completed' ? 100 : Math.round((r.step / r.totalSteps) * 100);
-      return `
-        <div class="card">
-          <div class="row">
-            <span class="topic">${escapeHtml(r.topic)}</span>
-            <span class="status ${r.status}">${r.status} — ${escapeHtml(r.stepLabel)}</span>
-          </div>
-          <div class="bar"><div style="width:${pct}%"></div></div>
-          <div class="meta">task ${r.taskId.slice(0, 8)}… · requested by ${escapeHtml(r.requestedBy)}</div>
-        </div>`;
-    })
-    .join('');
-}
+const subtitle = document.getElementById('subtitle')!;
+const container = document.getElementById('jobs')!;
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 }
 
-const app = new App({ name: 'report-dashboard', version: '0.1.0' });
+function metricsLine(job: JobView): string {
+  const leaderboard = job.metrics?.leaderboard;
+  const primary = job.metrics?.primary_metric;
+  if (!leaderboard || !primary || !job.bestModel) return '';
+  const winner = leaderboard[job.bestModel]?.[primary];
+  const others = Object.entries(leaderboard)
+    .filter(([name]) => name !== job.bestModel)
+    .map(([name, scores]) => `${name} ${scores[primary]}`)
+    .join(' · ');
+  return `<div class="meta">🏆 ${escapeHtml(job.bestModel)} ${primary}=${winner}${others ? ` &nbsp;|&nbsp; ${escapeHtml(others)}` : ''}</div>`;
+}
 
-// The host pushes the report_dashboard tool's own result here right after
+function render(jobs: JobView[]): void {
+  if (jobs.length === 0) {
+    container.innerHTML =
+      '<div class="empty">No training jobs yet — upload a dataset and ask the model to train on it.</div>';
+    return;
+  }
+  container.innerHTML = jobs
+    .map(job => {
+      const pct = STATUS_PCT[job.status] ?? 0;
+      const barClass = job.status === 'failed' || job.status === 'cancelled' ? ' bad' : '';
+      return `
+        <div class="card">
+          <div class="row">
+            <span class="topic">predict <code>${escapeHtml(job.targetColumn)}</code> <small>(${escapeHtml(job.problemType)})</small></span>
+            <span class="status ${job.status}">${job.status}${RUNNING.has(job.status) ? '…' : ''}</span>
+          </div>
+          <div class="bar${barClass}"><div style="width:${pct}%"></div></div>
+          <div class="meta">${escapeHtml(job.progress ?? '')}</div>
+          ${metricsLine(job)}
+          <div class="meta">job ${job.jobId.slice(0, 8)}…${
+            job.status === 'completed' ? ` · model ready: <code>model://${job.jobId}</code>` : ''
+          }</div>
+        </div>`;
+    })
+    .join('');
+}
+
+const app = new App({ name: 'training-dashboard', version: '0.2.0' });
+
+// The host pushes the training_dashboard tool's own result here right after
 // render — that seeds the view before the first poll happens.
 app.ontoolresult = result => {
-  const data = result.structuredContent as { reports?: ReportRecord[] } | undefined;
-  if (data?.reports) render(data.reports);
+  const data = result.structuredContent as { jobs?: JobView[] } | undefined;
+  if (data?.jobs) render(data.jobs);
 };
 
 async function poll(): Promise<void> {
   try {
     // Proxied through the host to our MCP server; arrives there as a normal
     // authenticated tools/call.
-    const result = await app.callServerTool({ name: 'list_report_tasks', arguments: {} });
-    const data = result.structuredContent as { reports?: ReportRecord[] } | undefined;
-    if (data?.reports) render(data.reports);
+    const result = await app.callServerTool({ name: 'list_training_jobs', arguments: {} });
+    const data = result.structuredContent as { jobs?: JobView[] } | undefined;
+    if (data?.jobs) render(data.jobs);
     subtitle.textContent = `Live — refreshes every ${POLL_MS / 1000}s (last: ${new Date().toLocaleTimeString()})`;
   } catch (err) {
     subtitle.textContent = `Polling failed: ${err instanceof Error ? err.message : String(err)}`;

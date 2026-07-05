@@ -32,6 +32,16 @@ export interface ServerConfig {
   allowedDomain?: string;
   /** Optional allowlist of exact account emails (user or service-account). */
   allowedEmails?: string[];
+  /**
+   * Postgres connection string. Unset → embedded PGlite under {dataDir}/db,
+   * which is a real Postgres engine in-process (fine for learning; use a
+   * managed Postgres in production).
+   */
+  databaseUrl?: string;
+  /** Root directory for datasets, job configs, model artifacts and the embedded DB. */
+  dataDir: string;
+  /** Python interpreter with scikit-learn/xgboost installed (see python/requirements.txt). */
+  pythonBin: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -52,6 +62,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     allowedDomain: env.GOOGLE_ALLOWED_DOMAIN || undefined,
     allowedEmails: env.GOOGLE_ALLOWED_EMAILS
       ? env.GOOGLE_ALLOWED_EMAILS.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
-      : undefined
+      : undefined,
+    databaseUrl: env.DATABASE_URL || undefined,
+    dataDir: env.DATA_DIR ?? 'var',
+    pythonBin: env.PYTHON_BIN ?? 'python3'
   };
 }

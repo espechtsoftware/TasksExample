@@ -11,30 +11,45 @@
  *   GET /healthz                                 — liveness probe (public, no data)
  */
 import { readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { InMemoryTaskStore, InMemoryTaskMessageQueue } from '@modelcontextprotocol/sdk/experimental/tasks';
-import { loadConfig } from './config.js';
+import { loadConfig, type ServerConfig } from './config.js';
 import { createGoogleAuthMiddleware, protectedResourceMetadata, type GoogleAuthOptions } from './auth/google.js';
 import { buildMcpServer, type McpDeps } from './mcp/server.js';
-import { ReportRegistry } from './mcp/reports.js';
+import { Db } from './db.js';
+import { MockPaymentProvider, type PaymentProvider } from './payments.js';
 
 export interface CreateAppOptions {
   /** Test seam used by the smoke test to sign tokens locally. Production never sets this. */
   authOverrides?: Pick<GoogleAuthOptions, 'getKey' | 'issuers'>;
+  /** Test seam: in-memory DB / alternative payment provider. */
+  db?: Db;
+  payments?: PaymentProvider;
 }
 
-export function createApp(config = loadConfig(), options: CreateAppOptions = {}) {
+export async function createApp(config: ServerConfig = loadConfig(), options: CreateAppOptions = {}) {
   const app = express();
-  app.use(express.json());
+  // Datasets arrive as tool arguments, so the JSON body must be allowed to
+  // exceed Express's 100kb default. The real per-plan cap is enforced in
+  // upload_dataset; this is just the transport ceiling.
+  app.use(express.json({ limit: '30mb' }));
 
-  // Shared, cross-request state. In production these would be backed by a
-  // real store (Redis/Firestore) so any replica can answer task polls.
+  const dataDir = path.resolve(process.cwd(), config.dataDir);
+  mkdirSync(dataDir, { recursive: true });
+
+  // Shared, cross-request state. Postgres holds the durable business data;
+  // the TaskStore holds live task state (swap InMemory* for a Redis-backed
+  // implementation before running multiple replicas).
   const deps: McpDeps = {
     taskStore: new InMemoryTaskStore(),
     taskMessageQueue: new InMemoryTaskMessageQueue(),
-    registry: new ReportRegistry(),
+    db: options.db ?? (await Db.open(config.databaseUrl, path.join(dataDir, 'db'))),
+    payments: options.payments ?? new MockPaymentProvider(),
+    dataDir,
+    pythonBin: config.pythonBin,
     // `npm run build:ui` produces this self-contained file; scripts run from the repo root.
     dashboardHtml: readFileSync(path.resolve(process.cwd(), 'dist/ui/dashboard.html'), 'utf8')
   };
@@ -60,8 +75,8 @@ export function createApp(config = loadConfig(), options: CreateAppOptions = {})
 
   app.post('/mcp', requireGoogleToken, async (req, res) => {
     // Stateless mode: a fresh McpServer + transport per request, no
-    // Mcp-Session-Id. Anything that must outlive the request (the running
-    // report task) lives in `deps`, which is why polling from a later
+    // Mcp-Session-Id. Anything that must outlive the request (jobs, tasks,
+    // entitlements) lives in `deps`, which is why polling from a later
     // request — or a different replica in production — still works.
     const server = buildMcpServer(deps);
     const transport = new StreamableHTTPServerTransport({
@@ -109,10 +124,12 @@ export function createApp(config = loadConfig(), options: CreateAppOptions = {})
 // tsx src/index.ts), not when imported by the smoke test.
 if (process.argv[1] && import.meta.url === new URL(`file://${path.resolve(process.argv[1])}`).href) {
   const config = loadConfig();
-  createApp(config).listen(config.port, () => {
+  const app = await createApp(config);
+  app.listen(config.port, () => {
     console.log(`MCP server (Streamable HTTP) listening on :${config.port}`);
     console.log(`  MCP endpoint:       ${config.publicUrl}/mcp  (Google bearer token required)`);
     console.log(`  Resource metadata:  ${config.publicUrl}/.well-known/oauth-protected-resource/mcp`);
     console.log(`  Expected audience:  ${config.audience}`);
+    console.log(`  Database:           ${config.databaseUrl ?? `embedded PGlite at ${config.dataDir}/db`}`);
   });
 }

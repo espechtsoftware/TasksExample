@@ -11,7 +11,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Report dashboard</title>
+    <title>Training dashboard</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -59,14 +59,16 @@
       .status.failed, .status.cancelled { color: var(--bad); }
       .bar { height: 6px; border-radius: 3px; background: var(--bar-bg); margin-top: 8px; overflow: hidden; }
       .bar > div { height: 100%; border-radius: 3px; background: var(--bar-fill); transition: width 0.4s ease; }
+      .bar.bad > div { background: var(--bad); }
+      code { font-size: 12px; }
       .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
       .empty { color: var(--muted); text-align: center; padding: 24px 0; }
     </style>
   </head>
   <body>
-    <h1>Report generation tasks</h1>
+    <h1>Model training jobs</h1>
     <p class="sub" id="subtitle">Connecting to host…</p>
-    <div id="reports"></div>
+    <div id="jobs"></div>
     <script type="module">
       /*APP_SCRIPT*/
     </script>

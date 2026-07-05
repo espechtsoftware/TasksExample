@@ -1,5 +1,8 @@
 node_modules/
 dist/
+var/
+__pycache__/
+*.joblib
 *.log
 .env
 .env.*

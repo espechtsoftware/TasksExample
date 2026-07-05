@@ -1,7 +1,7 @@
 {
-  "name": "mcp-gcp-tasks-example",
-  "version": "0.1.0",
-  "description": "Learning example: MCP server with Google (GCP) bearer-token auth, Streamable HTTP transport, long-running Tasks, and MCP Apps",
+  "name": "mcp-model-training-store",
+  "version": "0.2.0",
+  "description": "Learning example: paid model-training MCP server — Google (GCP) bearer auth, Streamable HTTP, long-running Tasks running scikit-learn/XGBoost AutoML, MCP Apps dashboard, Postgres commerce records",
   "type": "module",
   "private": true,
   "repository": {
@@ -21,15 +21,18 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "express": "^5.2.1",
     "jose": "^6.2.3",
+    "pg": "^8.22.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.0",
+    "@types/pg": "^8.20.0",
     "esbuild": "^0.25.0",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3"
