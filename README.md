@@ -194,7 +194,11 @@ because the sandbox CSP forbids external scripts.
 
 ```bash
 npm install
-pip install -r python/requirements.txt   # scikit-learn, xgboost, pandas, joblib
+
+# Most systems (Debian/Ubuntu, etc.) block system-wide pip installs (PEP 668).
+# Use a virtual environment instead:
+python3 -m venv .venv
+.venv/bin/pip install -r python/requirements.txt   # scikit-learn, xgboost, pandas, joblib
 
 export GOOGLE_AUDIENCE="https://mcp.example.com/mcp"   # required
 # Optional:
@@ -202,7 +206,7 @@ export GOOGLE_ALLOWED_DOMAIN="example.com"
 export GOOGLE_ALLOWED_EMAILS="me@example.com"
 export DATABASE_URL="postgres://…"       # default: embedded PGlite under var/db
 export DATA_DIR="var"                    # datasets, models, job configs
-export PYTHON_BIN="python3"
+export PYTHON_BIN=".venv/bin/python"     # point at the venv's interpreter
 
 npm run dev        # or: npm run build && npm start
 ```
