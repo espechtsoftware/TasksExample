@@ -211,6 +211,26 @@ export PYTHON_BIN=".venv/bin/python"     # point at the venv's interpreter
 npm run dev        # or: npm run build && npm start
 ```
 
+Copy [`.env.example`](.env.example) to `.env` and fill it in as a shortcut for the
+`export` lines above (`set -a; source .env; set +a` before `npm run dev`, or
+`node --env-file=.env dist/src/index.js`).
+
+### Local Postgres via Docker
+
+A real Postgres (rather than the embedded PGlite fallback) is available via
+[`docker-compose.yml`](docker-compose.yml). It listens on host port `55432`
+instead of the default `5432`, so it won't collide with any other local
+Postgres instance:
+
+```bash
+docker compose up -d
+```
+
+This starts automatically once running — Docker Desktop lists any running
+container or Compose project without extra registration. Set `DATABASE_URL`
+(see `.env.example`) to
+`postgres://tasksexample:tasksexample@localhost:55432/tasksexample` to use it.
+
 ### Smoke test (no GCP account, no Postgres server needed)
 
 ```bash

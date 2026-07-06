@@ -14,8 +14,8 @@
   "scripts": {
     "build": "npm run build:ui && tsc",
     "build:ui": "node scripts/build-ui.mjs",
-    "dev": "npm run build:ui && tsx src/index.ts",
-    "start": "node dist/src/index.js",
+    "dev": "npm run build:ui && tsx --env-file=.env src/index.ts",
+    "start": "node --env-file=.env dist/src/index.js",
     "typecheck": "tsc --noEmit",
     "smoke": "npm run build:ui && tsx scripts/smoke.ts"
   },

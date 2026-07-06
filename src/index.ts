@@ -32,6 +32,29 @@ export interface CreateAppOptions {
 
 export async function createApp(config: ServerConfig = loadConfig(), options: CreateAppOptions = {}) {
   const app = express();
+
+  // CORS: browser-based MCP clients (e.g. MCP Inspector) call this endpoint
+  // directly from their own origin. Bearer tokens go in an explicit header
+  // rather than cookies, so a permissive origin here doesn't expose
+  // credentials the way it would for cookie-authenticated APIs.
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin ?? '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    // Reflect whatever headers the client asks for (MCP clients vary: some
+    // send Mcp-Protocol-Version, Mcp-Session-Id, etc.) rather than hardcoding
+    // an allowlist that inevitably misses one.
+    res.header(
+      'Access-Control-Allow-Headers',
+      req.headers['access-control-request-headers'] ?? 'Content-Type, Authorization, Mcp-Session-Id'
+    );
+    res.header('Access-Control-Expose-Headers', 'Mcp-Session-Id, Mcp-Protocol-Version');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
   // Datasets arrive as tool arguments, so the JSON body must be allowed to
   // exceed Express's 100kb default. The real per-plan cap is enforced in
   // upload_dataset; this is just the transport ceiling.

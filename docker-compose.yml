@@ -1,0 +1,25 @@
+name: tasksexample
+
+services:
+  postgres:
+    build: ./docker/postgres
+    container_name: tasksexample-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tasksexample
+      POSTGRES_PASSWORD: tasksexample
+      POSTGRES_DB: tasksexample
+    ports:
+      # Host side uses a non-standard port so the default 5432 stays free
+      # for other local Postgres instances. Container side is always 5432.
+      - "55432:5432"
+    volumes:
+      - tasksexample-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tasksexample -d tasksexample"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tasksexample-postgres-data:
